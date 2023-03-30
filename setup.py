@@ -42,7 +42,8 @@ install_requires = [
     'dataclasses==0.8',
     'werkzeug==0.16.0',
     'itsdangerous==1.1.0',
-    'markupsafe==2.0.1'
+    'markupsafe==2.0.1',
+    'selenium==3.141.0'
 ]
 
 extras_require_all = [

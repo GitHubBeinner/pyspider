@@ -82,6 +82,7 @@ def connect_rpc(ctx, param, value):
               help='[deprecated] beanstalk config for beanstalk queue. '
               'please use --message-queue instead.')
 @click.option('--phantomjs-proxy', envvar='PHANTOMJS_PROXY', help="phantomjs proxy ip:port")
+@click.option('--chrome-proxy', envvar='CHROME_PROXY', help="chrome proxy ip:port")
 @click.option('--puppeteer-proxy', envvar='PUPPETEER_PROXY', help="puppeteer proxy ip:port")
 @click.option('--data-path', default='./data', help='data dir path')
 @click.option('--add-sys-path/--not-add-sys-path', default=True, is_flag=True,
@@ -237,13 +238,14 @@ def scheduler(ctx, xmlrpc, no_xmlrpc, xmlrpc_host, xmlrpc_port,
 @click.option('--user-agent', help='user agent')
 @click.option('--timeout', help='default fetch timeout')
 @click.option('--phantomjs-endpoint', help="endpoint of phantomjs, start via pyspider phantomjs")
+@click.option('--chrome-endpoint', help="endpoint of chrome, start via pyspider chrome")
 @click.option('--puppeteer-endpoint', help="endpoint of puppeteer, start via pyspider puppeteer")
 @click.option('--splash-endpoint', help="execute endpoint of splash: http://splash.readthedocs.io/en/stable/api.html#execute")
 @click.option('--fetcher-cls', default='pyspider.fetcher.Fetcher', callback=load_cls,
               help='Fetcher class to be used.')
 @click.pass_context
 def fetcher(ctx, xmlrpc, no_xmlrpc, xmlrpc_host, xmlrpc_port, poolsize, proxy, user_agent,
-            timeout, phantomjs_endpoint, puppeteer_endpoint, splash_endpoint, fetcher_cls,
+            timeout, phantomjs_endpoint, chrome_endpoint, puppeteer_endpoint, splash_endpoint, fetcher_cls,
             async_mode=True, get_object=False, no_input=False):
     """
     Run Fetcher.
@@ -260,6 +262,7 @@ def fetcher(ctx, xmlrpc, no_xmlrpc, xmlrpc_host, xmlrpc_port, poolsize, proxy, u
     fetcher = Fetcher(inqueue=inqueue, outqueue=outqueue,
                       poolsize=poolsize, proxy=proxy, async_mode=async_mode)
     fetcher.phantomjs_proxy = phantomjs_endpoint or g.phantomjs_proxy
+    fetcher.chrome_proxy = chrome_endpoint or g.chrome_proxy
     fetcher.puppeteer_proxy = puppeteer_endpoint or g.puppeteer_proxy
     fetcher.splash_endpoint = splash_endpoint
     if user_agent:
@@ -499,6 +502,51 @@ def puppeteer(ctx, port, auto_restart, args):
 
 
 @cli.command()
+@click.option('--chrome-path', default='', help='chrome path')
+@click.option('--port', default=26666, help='chrome port')
+@click.option('--auto-restart', default=False, help='auto restart chrome if crashed')
+@click.argument('args', nargs=-1)
+@click.pass_context
+def chrome(ctx, chrome_path, port, auto_restart, args):
+    """
+    Run chrome fetcher if chrome is installed.
+    """
+
+    import subprocess
+    g = ctx.obj
+    _quit = []
+    chrome_fetcher = os.path.join(
+        os.path.dirname(pyspider.__file__), 'fetcher/chrome_fetcher.py')
+
+    cmd = ['python', chrome_fetcher, str(port)]
+    try:
+        _chrome = subprocess.Popen(cmd)
+    except OSError:
+        logging.warning('chrome not found, continue running without it.')
+        return None
+
+    def quit(*args, **kwargs):
+        _quit.append(1)
+        _chrome.kill()
+        _chrome.wait()
+        logging.info('chrome exited.')
+
+    if not g.get('chrome_proxy'):
+        g['chrome_proxy'] = '127.0.0.1:%s' % port
+
+    chrome = utils.ObjectDict(port=port, quit=quit)
+    g.instances.append(chrome)
+    if g.get('testing_mode'):
+        return chrome
+
+    while True:
+        _chrome.wait()
+        if _quit or not auto_restart:
+            break
+        _chrome = subprocess.Popen(cmd)
+
+
+@cli.command()
 @click.option('--fetcher-num', default=1, help='instance num of fetcher')
 @click.option('--processor-num', default=1, help='instance num of processor')
 @click.option('--result-worker-num', default=1,
@@ -541,6 +589,15 @@ def all(ctx, fetcher_num, processor_num, result_worker_num, run_in):
             time.sleep(2)
             if threads[-1].is_alive() and not g.get('puppeteer_proxy'):
                 g['puppeteer_proxy'] = '127.0.0.1:%s' % puppeteer_config.get('port', 22222)
+
+        # chrome
+        if not g.get('chrome_proxy'):
+            chrome_config = g.config.get('chrome', {})
+            chrome_config.setdefault('auto_restart', True)
+            threads.append(run_in(ctx.invoke, chrome, **chrome_config))
+            time.sleep(2)
+            if threads[-1].is_alive() and not g.get('chrome_proxy'):
+                g['chrome_proxy'] = '127.0.0.1:%s' % chrome_config.get('port', 26666)
 
         # result worker
         result_worker_config = g.config.get('result_worker', {})
