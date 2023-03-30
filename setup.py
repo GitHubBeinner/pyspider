@@ -18,6 +18,12 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
 import pyspider
 
 install_requires = [
+    #'certifi==2021.5.30',
+    #'idna==2.10',
+    #'urllib3==1.25.11',
+    #'PyYAML==6.0',
+    #'defusedxml==0.7.1',
+    #'jsmin==3.0.1',
     'Flask==0.10',
     'Jinja2==2.7',
     'chardet==3.0.4',
@@ -30,9 +36,13 @@ install_requires = [
     'click==3.3',
     'six==1.10.0',
     'tblib==1.4.0',
-    'wsgidav==2.3.0',
+    'wsgidav==2.4.1',
     'tornado>=3.2,<=4.5.3',
-    'pyquery',
+    'pyquery==1.4.0',
+    'dataclasses==0.8',
+    'werkzeug==0.16.0',
+    'itsdangerous==1.1.0',
+    'markupsafe==2.0.1'
 ]
 
 extras_require_all = [

@@ -1,7 +1,7 @@
 Flask==0.10
 Jinja2==2.7
 chardet==3.0.4
-cssselect==0.9
+cssselect>=1.2.0
 lxml==4.3.3
 pycurl==7.43.0.3
 pyquery==1.4.0
