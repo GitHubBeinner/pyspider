@@ -136,7 +136,7 @@ class Fetcher(object):
             elif task.get('fetch', {}).get('fetch_type') in ('js', 'phantomjs'):
                 type = 'phantomjs'
                 result = yield self.phantomjs_fetch(url, task)
-            elif task.get('fetch', {}).get('fetch_type') in ('chrome'):
+            elif task.get('fetch', {}).get('fetch_type') in ('chrome', ):
                 type = 'chrome'
                 result = yield self.chrome_fetch(url, task)
        

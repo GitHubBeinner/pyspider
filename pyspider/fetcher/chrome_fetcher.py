@@ -117,6 +117,7 @@ class InitWebDriver(object):
 
             # headless mode
             options.add_argument('--headless')
+            options.add_argument('--no-sandbox')
 
             InitWebDriver._web_driver = webdriver.Chrome(chrome_options=options, port=10001)
 
