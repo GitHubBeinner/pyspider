@@ -6,9 +6,13 @@ import sys
 import json
 import time
 import datetime
+import selenium
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.by import By
 from flask import Flask, request
 from urllib.parse import urlparse
 
@@ -43,10 +47,18 @@ def handle_post():
                   }
 
         driver = InitWebDriver.get_web_driver(fetch)
+        wait = InitWebDriver.get_wait(fetch)
         try:
             InitWebDriver.init_extra(fetch)
-
+            
             driver.get(fetch['url'])
+
+            if fetch.get('ec_cssselector'):
+                wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, fetch.get('ec_cssselector'))), message="")
+            elif fetch.get('ec_xpath'):
+                wait.until(EC.presence_of_element_located((By.XPATH, fetch.get('ec_xpath'))), message="")
+            else:
+                pass
 
             # first time will sleep 2 seconds
             if InitWebDriver.isFirst:
@@ -56,6 +68,9 @@ def handle_post():
             result['url'] = driver.current_url
             result['content'] = driver.page_source
             result['cookies'] = _parse_cookie(driver.get_cookies())
+        except selenium.common.exceptions.TimeoutException as e:
+            result['error'] = str(e)
+            result['status_code'] = 598
         except Exception as e:
             result['error'] = str(e)
             result['status_code'] = 599
@@ -81,6 +96,7 @@ def _parse_cookie(cookie_list):
 
 class InitWebDriver(object):
     _web_driver = None
+    _wait = None
     isFirst = True
 
     @staticmethod
@@ -120,12 +136,20 @@ class InitWebDriver(object):
             options.add_argument('--no-sandbox')
 
             InitWebDriver._web_driver = webdriver.Chrome(chrome_options=options, port=10001)
+            # 超时等待
+            InitWebDriver._wait = WebDriverWait(InitWebDriver._web_driver, 20, 0.5)
 
     @staticmethod
     def get_web_driver(fetch):
         if InitWebDriver._web_driver is None:
             InitWebDriver._init_web_driver(fetch)
         return InitWebDriver._web_driver
+
+    @staticmethod
+    def get_wait(fetch):
+        if InitWebDriver._web_driver is None:
+            InitWebDriver._init_web_driver(fetch)
+        return InitWebDriver._wait
 
     @staticmethod
     def init_extra(fetch):
