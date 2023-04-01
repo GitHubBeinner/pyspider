@@ -32,7 +32,6 @@ def handle_post():
         start_time = datetime.datetime.now()
         raw_data = request.get_data()
         fetch = json.loads(raw_data, encoding='utf-8')
-        print('fetch=', fetch)
 
         result = {'orig_url': fetch['url'],
                   'status_code': 200,
@@ -78,7 +77,6 @@ def handle_post():
         end_time = datetime.datetime.now()
         result['time'] = (end_time - start_time).seconds
 
-        # print('result=', result)
         return json.dumps(result), 200, {
             'Cache': 'no-cache',
             'Content-Type': 'application/json',
